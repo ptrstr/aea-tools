@@ -316,24 +316,22 @@ where
         Ok(decompressed)
     }
 
-    
     pub fn cluster_count(&mut self) -> Result<u32> {
         let root_header = self.get_root_header()?;
-    
+
         let raw_size = u64::from_le_bytes(root_header.raw_size);
         let segment_size = u32::from_le_bytes(root_header.segment_size) as u64;
         let segments_per_cluster = u32::from_le_bytes(root_header.segments_per_cluster) as u64;
-    
+
         let cluster_size = segment_size
             .checked_mul(segments_per_cluster)
             .filter(|&size| size != 0)
             .ok_or_else(|| anyhow::anyhow!("Invalid AEA cluster size"))?;
-    
+
         let count = raw_size.div_ceil(cluster_size);
-    
+
         u32::try_from(count).map_err(|_| anyhow::anyhow!("AEA has too many clusters"))
     }
-
 
     fn ensure_all_cluster_headers_loaded(&mut self) -> Result<()> {
         let cluster_count = self.cluster_count()?;

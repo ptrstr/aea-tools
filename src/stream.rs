@@ -76,6 +76,17 @@ where
         let range_end = (offset + length).min(self.end_position);
         self.ensure_index_up_to(range_end.saturating_sub(1))?;
 
+        if self.segment_index_map.is_empty() || self.current_scanned_offset < range_end {
+            return Err(anyhow::anyhow!(
+                "AEA segment index is incomplete: indexed through {} bytes, \
+                 but requested range ends at {} bytes (scanned {} of {} clusters)",
+                self.current_scanned_offset,
+                range_end,
+                self.next_unscanned_cluster_index,
+                self.total_cluster_count,
+            ));
+        }
+
         let start_index = self
             .segment_index_map
             .partition_point(|&(_, _, segment_offset)| segment_offset <= offset)
@@ -113,6 +124,18 @@ where
             } else {
                 segment_data.len()
             };
+
+            if local_start > local_end || local_end > segment_data.len() {
+                return Err(anyhow::anyhow!(
+                    "AEA segment mapping is invalid: cluster={}, segment={}, \
+                     local_start={}, local_end={}, segment_len={}",
+                    cluster_index,
+                    segment_index,
+                    local_start,
+                    local_end,
+                    segment_data.len(),
+                ));
+            }
 
             result_data.extend_from_slice(&segment_data[local_start..local_end]);
         }
